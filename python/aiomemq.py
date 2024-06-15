@@ -7,13 +7,14 @@ import logging
 from collections import defaultdict, deque
 from typing import Any, Callable, Deque, Dict, Optional, Union
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.CRITICAL + 1)
 
-CACHE_LENGTH = 100
+DEFAULT_PORT = 7000
+DEFAULT_CACHE_SIZE = 100
 
 topics: Dict[str, set] = defaultdict(set)
 topics_reverse: Dict[asyncio.StreamWriter, set] = defaultdict(set)
-caches: Dict[str, deque] = defaultdict(lambda: deque(maxlen=CACHE_LENGTH))
+caches: Dict[str, deque] = defaultdict(lambda: deque(maxlen=DEFAULT_CACHE_SIZE))
 indexs: Dict[str, int] = defaultdict(int)
 
 template_subscribe: Dict[str, Dict[str, Union[type, bool]]] = {
@@ -68,7 +69,7 @@ def send_cached(writer: asyncio.StreamWriter, topic: str, last_seen: int) -> Non
     for cmd in caches[topic]:
         if cmd["index"] > last_seen:
             send_cmd(writer, cmd)
-    new_cache: Deque[Dict[str, Any]] = deque(maxlen=CACHE_LENGTH)
+    new_cache: Deque[Dict[str, Any]] = deque(maxlen=cache_size)
     for cmd in caches[topic]:
         if cmd["index"] <= last_seen:
             new_cache.append(cmd)
@@ -128,7 +129,7 @@ def verify_command(cmd: Dict[str, Any]) -> bool:
 
 
 def handle_command(cmd: Dict[str, Any], writer: asyncio.StreamWriter) -> None:
-    handlers: {
+    handlers = {
         "subscribe": handle_subscribe,
         "unsubscribe": handle_unsubscribe,
         "send": handle_send,
@@ -145,10 +146,18 @@ async def handle_client(
     line = str()
     try:
         while line.strip() != "quit":
-            line = (await reader.readline()).decode("utf8")
-            if line.strip() == "":
+            line = await reader.readline()
+            if not line:  # Check for EOF
+                logging.info("Client disconnected (EOF)")
+                break
+            try:
+                line = line.decode("utf8").strip()
+            except UnicodeDecodeError:
+                send_failure(writer, "Could not decode input as UTF-8")
                 continue
-            logging.info(f"Received: {line.strip()}")
+            if line == "":
+                continue
+            logging.info(f"Received: {line}")
             try:
                 cmd = json.loads(line)
             except json.JSONDecodeError:
@@ -181,7 +190,13 @@ async def run_server(host: str, port: int) -> None:
         await server.serve_forever()
 
 
-if len(sys.argv) != 2:
-    logging.info("Supply exactly one argument, the port to listen on..")
-    sys.exit(1)
-asyncio.run(run_server(host="localhost", port=int(sys.argv[1])))
+if __name__ == "__main__":
+    if len(sys.argv) not in [1, 2, 3]:
+        logging.info(f"Usage: python3 aiomemq.py <port> <cache_size>")
+        logging.info(f"  <port>       - optional, default {DEFAULT_PORT}")
+        logging.info(f"  <cache_size> - optional, default {DEFAULT_CACHE_SIZE}")
+        sys.exit(1)
+    port = int(sys.argv[1]) if len(sys.argv) == 2 else DEFAULT_PORT
+    cache_size = int(sys.argv[2]) if len(sys.argv) == 3 else DEFAULT_CACHE_SIZE
+    caches = defaultdict(lambda: deque(maxlen=cache_size))
+    asyncio.run(run_server(host="localhost", port=port))
