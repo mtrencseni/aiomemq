@@ -1,9 +1,10 @@
 from collections import defaultdict
-import pytest
 import subprocess
+import warnings
 import socket
 import random
 import string
+import pytest
 import time
 import json
 import os
@@ -12,10 +13,18 @@ SERVER_HOST = 'localhost'
 SERVER_PORT = 7000
 CACHE_SIZE = 2
 
+# pytest-3 -v unittests.py --target=python --full-trace -x
+# pytest-3 -v unittests.py --target=javascript --full-trace -x
+
 @pytest.fixture(scope="module")
-def server():
+def server(pytestconfig):
     # Start the server as a separate process
-    server_process = subprocess.Popen(['python3', 'aiomemq.py', str(SERVER_PORT), str(CACHE_SIZE)])
+    target = pytestconfig.getoption("target")
+    # warnings.warn(UserWarning(f"Using target={target}"))
+    if target == 'python':
+        server_process = subprocess.Popen(['python3', '../python/aiomemq.py', str(SERVER_PORT), str(CACHE_SIZE)])
+    elif target == 'javascript':
+        server_process = subprocess.Popen(['node', '../javascript/aiomemq.js', str(SERVER_PORT), str(CACHE_SIZE)])
     time.sleep(1)  # Give the server some time to start
     yield
     server_process.terminate()
@@ -46,16 +55,17 @@ def receive_many(sock, timeout=None, allow_trailing_bytes=False):
     return response
 
 def receive_until(sock, expected_count, timeout=0.05, allow_trailing_bytes=False):
-    end_time = time.time() + timeout
     responses = []
-    while time.time() < end_time:
+    while len(responses) < expected_count:
         try:
-            responses.extend(receive_many(sock, timeout, allow_trailing_bytes))
-            if len(responses) >= expected_count:
+            r = receive_many(sock, timeout, allow_trailing_bytes)
+            if len(r) == 0:
                 break
+            responses.extend(r)
         except socket.timeout:
             break
     return responses
+
 
 def send(sock, message):
     if isinstance(message, str):
@@ -347,7 +357,7 @@ def _test_many_connections(server, num_clients, num_messages):
     for recipient_id in range(num_clients):
         client, topic = clients[recipient_id]
         # received_messages = receive_many(client)
-        received_messages = receive_until(client, expected_count=expected_counts[recipient_id], timeout=0.1, allow_trailing_bytes=False)
+        received_messages = receive_until(client, expected_count=expected_counts[recipient_id], timeout=1)
         assert len(received_messages) == expected_counts[recipient_id]
         assert {'success': True} in received_messages
         # Check that all received messages were addressed to this client

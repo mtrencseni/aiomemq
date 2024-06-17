@@ -196,7 +196,7 @@ if __name__ == "__main__":
         logging.info(f"  <port>       - optional, default {DEFAULT_PORT}")
         logging.info(f"  <cache_size> - optional, default {DEFAULT_CACHE_SIZE}")
         sys.exit(1)
-    port = int(sys.argv[1]) if len(sys.argv) <= 2 else DEFAULT_PORT
+    port = int(sys.argv[1]) if len(sys.argv) <= 3 else DEFAULT_PORT
     cache_size = int(sys.argv[2]) if len(sys.argv) == 3 else DEFAULT_CACHE_SIZE
     caches = defaultdict(lambda: deque(maxlen=cache_size))
     asyncio.run(run_server(host="localhost", port=port))
