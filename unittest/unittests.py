@@ -15,6 +15,7 @@ CACHE_SIZE = 2
 
 # pytest-3 -v unittests.py --target=python --full-trace -x
 # pytest-3 -v unittests.py --target=javascript --full-trace -x
+# pytest-3 -v unittests.py --target=cpp --full-trace -x
 
 @pytest.fixture(scope="module")
 def server(pytestconfig):
@@ -25,6 +26,8 @@ def server(pytestconfig):
         server_process = subprocess.Popen(['python3', '../python/aiomemq.py', str(SERVER_PORT), str(CACHE_SIZE)])
     elif target == 'javascript':
         server_process = subprocess.Popen(['node', '../javascript/aiomemq.js', str(SERVER_PORT), str(CACHE_SIZE)])
+    elif target == 'cpp':
+        server_process = subprocess.Popen(['../cpp/aiomemq', str(SERVER_PORT), str(CACHE_SIZE)])
     time.sleep(1)  # Give the server some time to start
     yield
     server_process.terminate()
