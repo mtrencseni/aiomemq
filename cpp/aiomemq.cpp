@@ -68,22 +68,6 @@ bool valid_utf8(const string& str)
     catch(const boost::locale::conv::conversion_error&) {
         return false;
     }
-    // const unsigned char* u = reinterpret_cast<const unsigned char*>(str.data());
-    // size_t i = 0, n = str.size();
-    // while (i < n) {
-    //     unsigned char c = u[i];
-    //     if (c <= 0x7F) { ++i; continue; } // ASCII
-    //     size_t cont = 0;
-    //     if ((c & 0xE0) == 0xC0) { cont = 1; if (c < 0xC2) return false; }
-    //     else if ((c & 0xF0) == 0xE0) cont = 2;
-    //     else if ((c & 0xF8) == 0xF0) { cont = 3; if (c > 0xF4) return false; }
-    //     else return false;
-    //     if (i + cont >= n) return false;
-    //     for (size_t j = 1; j <= cont; ++j)
-    //         if ((u[i + j] & 0xC0) != 0x80) return false;
-    //     i += cont + 1;
-    // }
-    // return true;
 }
 
 void send_cached(tcp::socket& s, const string& topic, int last_seen)
@@ -357,6 +341,3 @@ int main(int argc, char* argv[])
     cerr << "Listening on 127.0.0.1:" << port << "\n";
     io.run();
 }
-
-// build:
-//   g++ -w -Iboost -Lboost/stage/lib -o aiomemq aiomemq.cpp -Wl,-Bstatic -lboost_json -Wl,-Bdynamic -std=c++20
