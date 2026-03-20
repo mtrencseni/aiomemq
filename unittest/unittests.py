@@ -28,6 +28,8 @@ def server(pytestconfig):
         server_process = subprocess.Popen(['node', '../javascript/aiomemq.js', str(SERVER_PORT), str(CACHE_SIZE)])
     elif target == 'cpp':
         server_process = subprocess.Popen(['../cpp/aiomemq', str(SERVER_PORT), str(CACHE_SIZE)])
+    elif target == 'rust':
+        server_process = subprocess.Popen(['../rust/target/debug/rust', str(SERVER_PORT), str(CACHE_SIZE)])
     time.sleep(1)  # Give the server some time to start
     yield
     server_process.terminate()
