@@ -1,3 +1,4 @@
 cpp/aiomemq
 cpp/boost
 */__pycache__
+.venv/
